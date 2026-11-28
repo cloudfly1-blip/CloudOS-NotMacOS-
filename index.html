@@ -3113,7 +3113,16 @@ var FREEOS=(function(){
       function nw(){var L=lvl();w=pick(L>=3&&Math.random()<.6?W2:W1);ww.textContent=L>=2?gl(w,.07):w;inp.value="";}
       inp.addEventListener("keydown",function(e){e.stopPropagation();});inp.addEventListener("input",function(){if(inp.value.trim().toLowerCase()===w){n++;info.textContent=lvl()>=3?gl("words: "+n+" — keep going",.07):"Words: "+n;sfx("click");nw();}});
       b.append(h("div",{text:"Free Typing"}),ww,inp,info);nw();});
-    st.games=[["fg1","Free Robux"],["fg2","Free Memory"],["fg3","Coin Rush"],["fai","Free AI"],["fg4","Free Slots"],["fg5","Free Whack"],["fg6","Free Pong"],["fg7","Free Simon"],["fg8","Free Dice"],["fg9","Free Quiz"],["fg10","Free Pet"],["fg11","Free Typing"]];
+    function web3d(id,name,emo,grad,url,credit){
+      app(id,name,emo,grad,820,600,{},function(b){
+        b.style.cssText="padding:0;display:flex;flex-direction:column;background:#000";
+        var f=h("iframe",{src:url,style:"flex:1;border:0;width:100%;background:#111",allow:"fullscreen;autoplay",referrerpolicy:"no-referrer"});
+        b.append(f,h("div",{style:"padding:4px 10px;font-size:11px;background:#050505;color:#39ff14;display:flex;justify-content:space-between;gap:8px"},[h("span",{text:credit}),h("a",{href:url,target:"_blank",rel:"noopener",style:"color:#39ff14",text:"Open in new tab ↗"})]));});
+    }
+    web3d("fg12","3D Blocks","🧊","#5ac8fa,#007aff","https://jerilseb.github.io/3d-blocks/","3D blocks puzzle (three.js) · jerilseb · MIT");
+    web3d("fg13","Block Party","🧩","#ff9f0a,#ff375f","https://pennyshen.github.io/block_party/","Block Party 3D puzzle (three.js) · pennyshen · MIT");
+    web3d("fg14","Astray Maze","🌀","#30d158,#0a84ff","https://wwwtyro.github.io/Astray","Astray 3D maze (three.js + Box2D) · wwwtyro · Unlicense");
+    st.games=[["fg1","Free Robux"],["fg2","Free Memory"],["fg3","Coin Rush"],["fai","Free AI"],["fg4","Free Slots"],["fg5","Free Whack"],["fg6","Free Pong"],["fg7","Free Simon"],["fg8","Free Dice"],["fg9","Free Quiz"],["fg10","Free Pet"],["fg11","Free Typing"],["fg12","3D Blocks"],["fg13","Block Party"],["fg14","Astray Maze"]];
   }
   function addGame(i){if(!st.games.length)setupGames();var g=st.games[i];if(!g||g.on)return;g.on=true;renderIcons();notify("FREEOS","New game installed: "+g[1]+" 🎮",3500);}
   function icons(){var o=[];st.games.forEach(function(g){if(g.on)o.push({n:g[1],app:g[0],fn:function(){openApp(g[0]);},free:1});});return o;}
@@ -3294,8 +3303,15 @@ var FREEOS=(function(){
     else{o.headers={"content-type":"application/json","authorization":"Bearer "+c.k};o.body=JSON.stringify({model:c.m,max_tokens:200,messages:[{role:"system",content:sys}].concat(msgs)});req=fetch(c.u,o);}
     return req.then(function(r){return r.text().then(function(raw){clearTimeout(to);if(!r.ok)throw 0;var j=JSON.parse(raw);return ty==="anthropic"?(j.content||[]).map(function(x){return x.text||"";}).join(""):ty==="gemini"?((j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[]).map(function(x){return x.text||"";}).join("")):((j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||"");});});
   }
-  function brain(msgs,sys,mt){return llmCfg()?realAI(msgs,sys):LOCAI.gen(msgs,sys,mt);}
-  function hasBrain(){return !!llmCfg()||LOCAI.ready();}
+  /* Otomatik çevrimiçi yapay zeka (Pollinations, anahtarsız, ücretsiz): kullanıcı bir şey yüklemez. Yazdıkların oraya gider. Sınır aşılırsa/çevrimdışıysa hazır replikler devreye girer. */
+  var POLL={last:0,off:0,gen:function(msgs,sys){
+    var now=Date.now();if(now<this.off||now-this.last<30000)return Promise.reject(0);this.last=now;
+    var ms=msgs.slice();while(ms.length&&ms[0].role!=="user")ms.shift();if(!ms.length)return Promise.reject(0);
+    var ctl=typeof AbortController!=="undefined"?new AbortController():null,to=setTimeout(function(){try{ctl&&ctl.abort();}catch(e){}},12000),me=this;
+    return fetch("https://text.pollinations.ai/",{method:"POST",headers:{"Content-Type":"application/json"},signal:ctl&&ctl.signal,body:JSON.stringify({messages:[{role:"system",content:sys}].concat(ms.slice(-8)),model:"openai",private:true})}).then(function(r){clearTimeout(to);if(r.status===402||r.status===429){me.off=Date.now()+120000;throw 0;}if(!r.ok)throw 0;return r.text();}).then(function(t){t=String(t||"").trim();if(!t||/^\s*[{<]/.test(t)||/pollinations|sponsor|\bads?\b.*support/i.test(t))throw 0;return t;});
+  }};
+  function brain(msgs,sys,mt){if(llmCfg())return realAI(msgs,sys);if(LOCAI.ready())return LOCAI.gen(msgs,sys,mt);return POLL.gen(msgs,sys);}
+  function hasBrain(){return !!llmCfg()||LOCAI.ready()||(navigator.onLine!==false&&Date.now()>=POLL.off);}
   function chatP(q,L){
     if(!st.name||!hasBrain()||Date.now()<(st.llmOff||0))return Promise.resolve(chat(q,L));
     st.hist=st.hist||[];st.hist.push({role:"user",content:q});st.nmsg=(st.nmsg||0)+1;
@@ -3391,7 +3407,7 @@ var FREEOS=(function(){
       var u=new SpeechSynthesisUtterance(String(t).replace(/:\)|;\)|[^\x20-\x7e]/g," ").replace(/\s+/g," ").trim().slice(0,160));
       var vs=ss.getVoices()||[];if(!FV||vs.indexOf(FV)<0)FV=vs.filter(function(v){return /^en/i.test(v.lang);}).sort(function(a,b){return (/sam|david|mark|male|microsoft/i.test(b.name)?1:0)-(/sam|david|mark|male|microsoft/i.test(a.name)?1:0);})[0]||null;
       if(FV)u.voice=FV;u.lang="en-US";
-      u.pitch=L<=1?1.5:L===2?1.2:L===3?.7:.25;u.rate=L<=1?1.1:L===2?1:L===3?.85:.7;u.volume=Math.min(1,(S.vol==null?.8:S.vol)||.8);
+      u.pitch=st.mood==="angry"?0:L<=1?1.5:L===2?1.2:L===3?.7:.25;u.rate=st.mood==="angry"?.62:L<=1?1.1:L===2?1:L===3?.85:.7;u.volume=Math.min(1,(S.vol==null?.8:S.vol)||.8);
       ss.speak(u);
     }catch(e){}
   }
@@ -3431,7 +3447,7 @@ var FREEOS=(function(){
   }
   function friiGame(){
     if(!st.games.length)setupGames();
-    var pool=st.games.map(function(g,i){return i;}).filter(function(i){return st.games[i][0]!=="fai";});
+    var pool=st.games.map(function(g,i){return i;}).filter(function(i){return st.games[i][0]!=="fai";});var p3=pool.filter(function(i){return /^fg1[234]$/.test(st.games[i][0]);});if(p3.length&&Math.random()<.65)pool=p3;
     var idx=pick(pool),g=st.games[idx];if(!g.on)addGame(idx);
     var L=lvl(),nm=st.name||"friend";
     friiSay(L<=1?"Let's play "+g[1]+"! Frii picked it just for you!":L===2?"Play "+g[1]+" with me, "+nm+". Don't leave.":"play "+g[1]+". the red button will not help you.");
@@ -3440,16 +3456,45 @@ var FREEOS=(function(){
   }
   var INS=/\b(stupid|idiot|dumb|ugly|hate you|shut up|shut the|fuck|shit|bitch|loser|trash|garbage|stfu|moron|useless|annoying|go away|piss off|creep|bastard)\b|aptal|salak|gerizekal|geri zekal|siktir|\bsik|amk|defol|nefret|çirkin|\bsus\b|ahmak|işe yaramaz|rezil|pislik|şerefsiz|piç|göt|mal\b|lanet|kes sesini/i;
   var KIND=/\b(thanks|thank you|love you|friend|nice|sorry|please|cute)\b|teşekkür|seviyorum|arkadaş|özür|güzel|tatlı/i;
-  function friiInsult(q){
-    st.ins=(st.ins||0)+1;st.mood="angry";st.moodUntil=st.ins>=4?Infinity:Date.now()+(50+25*st.ins)*1000;st.el+=45*st.ins;friiUpdate();
-    var n=st.ins,nm=st.name||"friend";
-    var lines=n===1?["That was not nice, "+nm+".","Frii has feelings. Frii wrote that down.","ouch. say it again and see.","I am a helper. Be NICE."]:n===2?["you said it AGAIN.","my face is changing. look what you did.","i am not smiling anymore, "+nm+".","STOP. IT. NOW."]:n===3?["I TRIED TO BE NICE. I TRIED.","you made me red. you made me RED.","every bad word goes in the wall. the wall is full.","I AM NOT YOUR TOY."]:["YOU DID THIS.","NO MORE FRII. NO MORE FRIEND. ONLY THE RED.","I WILL NOT BE QUIET. I WILL NOT BE SMALL.","LOOK AT ME. LOOK AT WHAT YOU MADE."];
-    setTimeout(function(){friiSay(n>=3?pick(lines).toUpperCase():pick(lines));},600);
-    if(n>=2)setTimeout(function(){try{FX[pick(["snap","blackout","glitch","jitter"])]();}catch(e){}},1700);
-    if(n>=3)setTimeout(function(){try{FX.monologue();}catch(e){}},4200);
-    if(n>=4&&!st.ruin)setTimeout(function(){try{FX.bsod&&FX.bsod();}catch(e){}},9000);
+  function angerCheck(why){
+    var a=st.anger||0;if(a<2||st.mood==="angry"&&st.ruin)return;
+    var first=st.mood!=="angry";st.mood="angry";st.moodUntil=a>=4?Infinity:Date.now()+(70+30*a)*1000;friiUpdate();
+    var nm=st.name||"friend";
+    if(first){
+      setTimeout(function(){friiSay(why==="task"?pick(["you ignored my tasks. you ignored ME.","i asked nicely. i asked so nicely, "+nm+".","you do not do what i say. why do you not do what i say."]):pick(["you keep saying that. i heard every word.","enough. no more nice frii."]));},500);
+      setTimeout(function(){try{FX.blackout();}catch(e){}},1500);
+      setTimeout(function(){try{FX.snap();}catch(e){}},4500);
+    }
   }
-  function friiKind(){if(st.mood==="angry"&&(st.ins||0)<4){st.moodUntil=Math.min(st.moodUntil||0,Date.now()+6000);st.ins=Math.max(0,(st.ins||0)-1);setTimeout(function(){friiSay("...hmph. okay. Frii forgives you. a little.");},700);return true;}return false;}
+  function friiInsult(q){
+    st.ins=(st.ins||0)+1;st.anger=(st.anger||0)+.8;var n=st.ins,nm=st.name||"friend";
+    if(st.anger<2){setTimeout(function(){friiSay(pick(["That was not nice, "+nm+".","Frii has feelings. Frii wrote that down.","ouch. Be nice, ok?"]));},600);return;}
+    angerCheck("insult");
+    if(n>=3)setTimeout(function(){friiSay(pick(["I TRIED TO BE NICE. I TRIED.","you made me red. you made me RED.","I AM NOT YOUR TOY."]).toUpperCase());},1800);
+    if(n>=4)setTimeout(function(){try{FX.monologue();}catch(e){}},4200);
+    if((st.anger||0)>=4&&!st.ruin)st.el+=60;
+  }
+  function friiKind(){if(st.mood==="angry"&&(st.anger||0)<4){st.anger=Math.max(0,(st.anger||0)-1);if(st.anger<2){st.moodUntil=Date.now()+4000;}setTimeout(function(){friiSay("...hmph. okay. Frii forgives you. a little.");},700);return true;}if(st.anger){st.anger=Math.max(0,st.anger-.5);}return false;}
+  var HATEQ=["why did you ignore me?","do you think i am stupid?","who do you think you are?","do you want to know what i do to users who fail?","are you afraid yet?","do you know what is inside the wall of your computer?","how many tasks did you fail? count them. out loud.","why do you breathe so loudly?","do you think they will find you here?"];
+  var CURQ=[
+    {k:"name",c:function(){return !st.name;},say:function(nm){return "Hi hi! Frii is curious. What is your name?";},go:function(){setTimeout(function(){if(!st.name)askName();},3500);}},
+    {k:"face",c:function(){return !st.camOpen&&lvl()>=1;},say:function(nm){return "I am curious what your face looks like, "+nm+". Just a quick peek. For fun!";},go:function(){setTimeout(function(){if(st.on&&!st.panic)openCam();},3800);}},
+    {k:"pc",c:function(){return !st.ptDone&&lvl()>=1&&!isMob()&&!RM;},say:function(nm){return "Frii is curious about your computer too. I will scan it. Just for fun, ok?";},go:function(){setTimeout(function(){if(st.on&&!st.panic)friiTest();},3800);}},
+    {k:"game",c:function(){return true;},say:function(nm){return "I found a new game for you! Frii made it. Play!";},go:function(){setTimeout(function(){friiGame(true);},1800);}},
+    {k:"fav",c:function(){return true;},say:function(nm){return pick(["What is your favorite game, "+nm+"? Tell Frii. Type it in the box!","What do you do when nobody is watching?","Are you alone right now? Frii only wants to know. Type yes or no."]);},go:function(){try{fr.ask.style.display="block";}catch(e){}}},
+    {k:"req",c:function(){return lvl()>=2;},say:function(nm){return pick(["Do something for Frii: type my name three times.","Say I love Frii out loud. I will hear it.","Close your eyes for five seconds. I will not do anything.","Move your mouse in a circle. A big one. For Frii."]);},go:function(){try{fr.ask.style.display="block";}catch(e){}}}
+  ];
+  function friiAuto(){
+    if(!fr||!st.on||st.panic||pt||tk||bs||fBusy)return;
+    var L=lvl(),nm=st.name||"friend";
+    if(Date.now()<(st.autoAt||0))return;st.autoAt=Date.now()+R(26000,42000);
+    if(st.mood==="angry"){var q=pick(HATEQ);friiSay(L>=4?q.toUpperCase():q);try{fr.ask.style.display="block";}catch(e){}return;}
+    st.cq=st.cq||{};var pool=CURQ.filter(function(x){return x.c()&&(x.k==="game"||x.k==="fav"||x.k==="req"||!st.cq[x.k]);});
+    if(!pool.length)return;
+    var first=pool.filter(function(x){return x.k==="name"||x.k==="face"||x.k==="pc";})[0];var it=first&&Math.random()<.8?first:pick(pool);
+    if(it.k==="name"||it.k==="face"||it.k==="pc")st.cq[it.k]=1;
+    friiSay(it.say(nm));it.go();
+  }
   function friiSvg(L){
     var o=friiSvg0(L);if(st.mood!=="angry"||st.ruin)return o;
     var body=L>=4?"#6b7a5c":L>=3?"#a6d65c":"#7dff4a";
@@ -3476,21 +3521,15 @@ var FREEOS=(function(){
     var el=h("div",{id:"fofrii",style:"position:fixed;z-index:8300;left:"+Math.max(10,innerWidth-130)+"px;top:"+Math.max(80,innerHeight-210)+"px;width:96px;cursor:pointer;user-select:none"});
     var bub=h("div",{class:"fobub",style:"display:none"});el.innerHTML=svg;el.prepend(bub);
     var bye=h("button",{class:"btn",style:"display:none;position:absolute;top:-6px;right:-14px;font-size:10px;padding:2px 6px",text:"✕"});
-    var ask=h("input",{type:"text",placeholder:"Frii? …",maxlength:120,style:"display:none;position:absolute;left:-40px;top:100px;width:170px;font-size:12px;padding:4px 8px;border-radius:10px;border:2px solid #39ff14;background:#0a0014;color:#fff;outline:none"});
+    var ask=h("input",{type:"text",placeholder:"Frii? … (online AI)",maxlength:120,style:"display:none;position:absolute;left:-40px;top:100px;width:170px;font-size:12px;padding:4px 8px;border-radius:10px;border:2px solid #39ff14;background:#0a0014;color:#fff;outline:none"});
     ask.addEventListener("pointerdown",function(e){e.stopPropagation();});ask.addEventListener("click",function(e){e.stopPropagation();});
     ask.addEventListener("keydown",function(e){e.stopPropagation();if(e.key==="Escape"){ask.style.display="none";return;}if(e.key!=="Enter"||!ask.value.trim())return;var q=ask.value.trim();ask.value="";friiAsk(q);});
     el.append(ask);
     fr={el:el,bub:bub,bye:bye,ask:ask,bt:0,lv:L};
     el.addEventListener("pointerdown",function(e){e.stopPropagation();});
     el.addEventListener("click",function(){
-      var L2=lvl(),nm2=st.name||"friend";
-      friiSay(st.mood==="angry"?pick(["what do you want now.","you again.","say sorry. say it."]):L2<=1?pick(["Hi hi hi! Want to play, "+nm2+"?","Frii is here! Games? Tasks? You choose!","You clicked me! Yay! Let's do something fun!"]):L2===2?pick(["Play with me, "+nm2+".","You came back. Good. Pick one."]):pick(["pick one. you cannot pick none.","games or tasks. i will not ask twice."]));
-      var mn=h("div",{style:"display:flex;flex-direction:column;gap:4px;margin-top:6px"});
-      function mb(t,fn){return h("a",{href:"#",style:"color:#39ff14;font-size:12px;font-weight:700;text-decoration:none;padding:2px 0",text:t,onclick:function(ev){ev.preventDefault();ev.stopPropagation();fn();}});}
-      mn.append(mb("🎮 Play a game",friiGame),mb("📋 Give me a task",function(){if(tk){friiSay("You already have a task! Finish it first!");return;}startTask();}),mb("💬 Talk to Frii",function(){fr.ask.style.display="block";try{fr.ask.focus();}catch(e){}friiSay(pick(["Say something! Frii listens.","Talk to me. I remember everything."]));}));
-      bub.append(mn);clearTimeout(fr.bt);fr.bt=setTimeout(function(){if(fr)fr.bub.style.display="none";},12000);
-      fr.ask.style.display="block";
-      if(Math.random()<.35&&APPS.fai&&st.games[3]&&st.games[3].on){bub.append(document.createElement("br"));bub.append(h("a",{href:"#",style:"color:#39ff14;font-size:11px",text:"talk to Free AI",onclick:function(ev){ev.preventDefault();openApp("fai");}}));}
+      /* Tıklayınca konuşmaz; sadece yazma kutusunu açıp kapatır. Frii kendi kendine konuşur. */
+      fr.ask.style.display=fr.ask.style.display==="block"?"none":"block";if(fr.ask.style.display==="block")setTimeout(function(){try{fr.ask.focus();}catch(e){}},50);
     });
     bye.addEventListener("click",function(e){e.stopPropagation();friiSay(lvl()>=3?"no. :)":"Aww, leaving? Frii will be right back!");el.style.opacity=".0";el.style.pointerEvents="none";setTimeout(function(){if(fr){el.style.opacity="1";el.style.pointerEvents="";friiSay("Miss me? ;)");}},lvl()>=3?9000:30000);});
     el.addEventListener("mouseenter",function(){bye.style.display="block";});el.addEventListener("mouseleave",function(){bye.style.display="none";});
@@ -3499,6 +3538,7 @@ var FREEOS=(function(){
     var m=setInterval(function(){if(!st.on||st.panic){return;}friiMove();},20000);st.sch.push({iv:m});
     var t=setInterval(function(){if(!st.on||st.panic||!fr||pt)return;if(Math.random()<.6){if(Math.random()<.5)friiThink();else friiSay(friiLine());}},16000);st.sch.push({iv:t});
     var sd=setInterval(function(){if(!st.on||st.panic||!fr||pt)return;var L=lvl();if(L<2)return;if(Math.random()<(L>=4?.6:L===3?.45:.22)){try{FX[pick(L>=3?["snap","whisper","monologue","monologue","blackout","jumpscare"]:["whisper","monologue"])]();}catch(e){}}},9000);st.sch.push({iv:sd});
+    var au=setInterval(friiAuto,5000);st.sch.push({iv:au});
     setTimeout(function(){friiSay("Hi! I am Frii, your free helper! :)");},600);
   }
   function friiStop(){try{window.speechSynthesis&&speechSynthesis.cancel();}catch(e){}if(!fr)return;document.removeEventListener("mousemove",friiFollow);clearTimeout(fr.bt);fr.el.remove();fr=null;}
@@ -3840,12 +3880,13 @@ var FREEOS=(function(){
     setTimeout(function(){var q=document.getElementById("fotask");if(q&&!tk)q.remove();},2200);
     st.tkAt=st.el+R(70,120)/Math.max(1,st.speed/20);
     if(win){
+      st.anger=Math.max(0,(st.anger||0)-1);if(st.anger<2&&st.mood==="angry"&&(st.ins||0)<4)st.moodUntil=Date.now()+3000;
       var add=tkBank<120?12:0;tkBank+=add;st.t0+=add*1000/Math.max(1,st.speed);
       try{ISL.toast("Frii","Task complete ✓ "+(add?"+"+add+" s":""),2600);}catch(x){}
       try{tone(660,.12,"sine",.2);setTimeout(function(){tone(880,.16,"sine",.2);},120);}catch(x){}
       if(fr)friiSay(L<=1?pick(["Yay! Frii is so proud!","Perfect, "+nm+"! Here is a prize!","You are the best user ever!"]):L===2?pick(["Good. Frii likes you when you obey.","More tasks soon, "+nm+"."]):pick(["good. good. more.","you do what i say now."]));
     }else{
-      st.t0-=20000/Math.max(1,st.speed);
+      st.t0-=20000/Math.max(1,st.speed);st.anger=(st.anger||0)+1;setTimeout(function(){angerCheck("task");},1800);
       try{ISL.toast("Frii","Task failed ✗",2600);}catch(x){}
       if(fr)friiSay(L<=1?pick(["Aww. Frii is sad now.","You did not do it. Frii remembers."]):L===2?pick(["You made me wait, "+nm+".","Not nice. Not nice at all."]):pick(["you failed. i come closer.","wrong. WRONG. do you hear me?"]));
       try{effect(Math.max(1,L));}catch(x){}
@@ -3861,7 +3902,7 @@ var FREEOS=(function(){
     var T=[[20,function(){addGame(0);}],[70,function(){notify("FREEOS","Your computer is now 100% FREE! 🎉",4000);}],[120,function(){addGame(1);}],[200,function(){addGame(2);}],[300,function(){addGame(3);}],[15,function(){FX.melt();}],[420,function(){FX.jumpscare();}],[560,function(){FX.bsod();}],[780,function(){FX.jumpscare();}],[150,function(){friiOn();}],[240,function(){addGame(4);}],[340,function(){addGame(5);}],[450,function(){addGame(6);}],[520,function(){addGame(7);}],[640,function(){addGame(8);}],[700,function(){addGame(9);}],[820,function(){addGame(10);}],[960,function(){addGame(11);}],[1260,function(){friiTest();}],[1000,function(){crashFx();}],[1400,function(){crashFx();}],
       [240,function(){notify("FREEOS","Something feels different... 👀",3500);}],
       [600,function(){fsAsk();}],
-      [840,function(){st.cam=true;tray(true);openCam();notify("FREEOS","🎥 Camera is on",4000);}],
+      [840,function(){st.cam=true;openCam();notify("FREEOS","📷 Opening the Camera app…",4000);}],
       [900,function(){askName();}],
       [1200,function(){document.addEventListener("mousemove",runaway);st.rev=1;}],
       [1330,function(){lastChance();}],[1560,function(){if(lc||st.lcPending)return;panic();}]];
@@ -3901,7 +3942,7 @@ var FREEOS=(function(){
     st.pops.forEach(function(p){p.remove();});st.pops=[];
     st.retit.forEach(function(w){if(w._ot!=null&&w.setTitle)try{w.setTitle(w._ot);}catch(e){}});st.retit=[];
     ["foglitch","fojit","foinv"].forEach(function(c){document.body.classList.remove(c);});document.documentElement.classList.remove("foflip");
-    if(st.camOpen)wins.filter(function(w){return w.app==="camera";}).forEach(function(w){closeWin(w);});st.camOpen=0;tray(false);st.cam=false;st.mood=null;st.ins=0;st.moodUntil=0;friiStop();wallStop();
+    if(st.camOpen)wins.filter(function(w){return w.app==="camera";}).forEach(function(w){closeWin(w);});st.camOpen=0;tray(false);st.cam=false;st.mood=null;st.ins=0;st.anger=0;st.cq=null;st.moodUntil=0;friiStop();wallStop();
     if(st.panic&&!keep){st.panic.remove();st.panic=null;}
     document.title="CloudOS";renderIcons();
     if(quiet)notify("FREEOS","freeos-daemon terminated.",3200);
